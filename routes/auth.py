@@ -16,10 +16,15 @@ def signup():
         return jsonify({"error": "Missing required fields"}), 400
 
     # Validate email format
+    # try:
+    #     validate_email(data["email"])
+    # except EmailNotValidError:
+    #     return jsonify({"error": "Invalid email format"}), 400
     try:
-        validate_email(data["email"])
-    except EmailNotValidError:
-        return jsonify({"error": "Invalid email format"}), 400
+        email_info = validate_email(data["email"], check_deliverability=False)
+        email = email_info.normalized
+    except EmailNotValidError as e:
+        return jsonify({"error": f"Invalid email format: {str(e)}"}), 400
 
     # Check if email already exists
     if Host.query.filter_by(email=data["email"]).first():
@@ -30,7 +35,7 @@ def signup():
 
     # Create host
     host = Host(
-        email=data["email"],
+        email=email,
         password_hash=password_hash,
         name=data["name"],
         whatsapp_number=data["whatsapp_number"],
