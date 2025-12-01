@@ -1,3 +1,4 @@
+# backend/models.py
 from extensions import db
 from datetime import datetime
 import uuid
@@ -32,7 +33,6 @@ class Event(db.Model):
 
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    banner_image = db.Column(db.String(255))
 
     event_date = db.Column(db.Date, nullable=False)
     start_time = db.Column(db.Time, nullable=False)
@@ -43,7 +43,6 @@ class Event(db.Model):
 
     allow_modifications = db.Column(db.Boolean, default=True)
     allow_cancellations = db.Column(db.Boolean, default=True)
-    custom_fields = db.Column(db.JSON)  # Store as JSON array
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -60,18 +59,17 @@ class Attendee(db.Model):
 
     whatsapp_number = db.Column(db.String(20), nullable=False)
     name = db.Column(db.String(100), nullable=False)
-    family_member_names = db.Column(db.JSON)  # Array of names
+    family_member_names = db.Column(db.JSON)
     num_adults = db.Column(db.Integer, default=1)
     num_children = db.Column(db.Integer, default=0)
     comments = db.Column(db.Text)
 
-    status = db.Column(db.String(20), default="confirmed")  # confirmed, cancelled
+    status = db.Column(db.String(20), default="confirmed")
     rsvp_date = db.Column(db.DateTime, default=datetime.utcnow)
     last_modified = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
-    # Composite unique constraint: one RSVP per whatsapp number per event
     __table_args__ = (
         db.UniqueConstraint(
             "event_id", "whatsapp_number", name="unique_attendee_per_event"

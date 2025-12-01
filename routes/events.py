@@ -1,8 +1,7 @@
-from flask import Blueprint, request, jsonify, session, send_from_directory
+# backend/routes/events.py
+from flask import Blueprint, request, jsonify, session, Response
 from extensions import db
-from flask import current_app as app
 from models import Host, Event, Attendee
-from utils.file_handler import save_banner_image
 from services.cep_service import get_address_from_cep
 from datetime import datetime
 import csv
@@ -12,7 +11,6 @@ bp = Blueprint("events", __name__, url_prefix="/api/events")
 
 
 def require_auth(f):
-    """Decorator to require authentication"""
     from functools import wraps
 
     @wraps(f)
@@ -27,36 +25,20 @@ def require_auth(f):
 @bp.route("/create", methods=["POST"])
 @require_auth
 def create_event():
-    data = request.form.to_dict()  # Use form data because of file upload
+    data = request.get_json()
 
-    # Validate required fields
     required = ["title", "event_date", "start_time", "address_cep"]
     if not all(field in data for field in required):
         return jsonify({"error": "Missing required fields"}), 400
 
-    # Get address from CEP
     address_full = get_address_from_cep(data["address_cep"])
     if not address_full:
         return jsonify({"error": "Invalid CEP"}), 400
 
-    # Handle banner image upload
-    banner_filename = None
-    if "banner_image" in request.files:
-        file = request.files["banner_image"]
-        if file.filename:
-            banner_filename = save_banner_image(file, app.config["UPLOAD_FOLDER"])
-
-    # Parse custom fields (sent as JSON string)
-    import json
-
-    custom_fields = json.loads(data.get("custom_fields", "[]"))
-
-    # Create event
     event = Event(
         host_id=session["host_id"],
         title=data["title"],
         description=data.get("description", ""),
-        banner_image=banner_filename,
         event_date=datetime.strptime(data["event_date"], "%Y-%m-%d").date(),
         start_time=datetime.strptime(data["start_time"], "%H:%M").time(),
         end_time=(
@@ -66,9 +48,8 @@ def create_event():
         ),
         address_cep=data["address_cep"],
         address_full=address_full,
-        allow_modifications=data.get("allow_modifications", "true").lower() == "true",
-        allow_cancellations=data.get("allow_cancellations", "true").lower() == "true",
-        custom_fields=custom_fields,
+        allow_modifications=data.get("allow_modifications", True),
+        allow_cancellations=data.get("allow_cancellations", True),
     )
 
     db.session.add(event)
@@ -92,7 +73,6 @@ def create_event():
 @bp.route("/my-events", methods=["GET"])
 @require_auth
 def get_my_events():
-    """Get all events for the logged-in host"""
     events = (
         Event.query.filter_by(host_id=session["host_id"])
         .order_by(Event.event_date.desc())
@@ -131,7 +111,6 @@ def get_my_events():
 
 @bp.route("/<slug>", methods=["GET"])
 def get_event_by_slug(slug):
-    """Get event details by slug (for guests viewing invitation)"""
     event = Event.query.filter_by(slug=slug).first()
 
     if not event:
@@ -145,11 +124,6 @@ def get_event_by_slug(slug):
                     "slug": event.slug,
                     "title": event.title,
                     "description": event.description,
-                    "banner_image": (
-                        f"/uploads/banners/{event.banner_image}"
-                        if event.banner_image
-                        else None
-                    ),
                     "event_date": event.event_date.isoformat(),
                     "start_time": event.start_time.strftime("%H:%M"),
                     "end_time": (
@@ -158,7 +132,6 @@ def get_event_by_slug(slug):
                     "address_full": event.address_full,
                     "allow_modifications": event.allow_modifications,
                     "allow_cancellations": event.allow_cancellations,
-                    "custom_fields": event.custom_fields,
                 }
             }
         ),
@@ -169,13 +142,11 @@ def get_event_by_slug(slug):
 @bp.route("/<int:event_id>/attendees", methods=["GET"])
 @require_auth
 def get_event_attendees(event_id):
-    """Get all attendees for an event (host only)"""
     event = Event.query.get(event_id)
 
     if not event:
         return jsonify({"error": "Event not found"}), 404
 
-    # Check if the logged-in host owns this event
     if event.host_id != session["host_id"]:
         return jsonify({"error": "Unauthorized"}), 403
 
@@ -207,17 +178,13 @@ def get_event_attendees(event_id):
 @bp.route("/<int:event_id>/export-csv", methods=["GET"])
 @require_auth
 def export_attendees_csv(event_id):
-    """Export attendees as CSV"""
     event = Event.query.get(event_id)
 
     if not event or event.host_id != session["host_id"]:
         return jsonify({"error": "Unauthorized"}), 403
 
-    # Create CSV in memory
     output = io.StringIO()
     writer = csv.writer(output)
-
-    # Write headers
     writer.writerow(
         [
             "Name",
@@ -231,7 +198,6 @@ def export_attendees_csv(event_id):
         ]
     )
 
-    # Write data
     for attendee in event.attendees:
         writer.writerow(
             [
@@ -250,10 +216,7 @@ def export_attendees_csv(event_id):
             ]
         )
 
-    # Prepare response
     output.seek(0)
-    from flask import Response
-
     return Response(
         output.getvalue(),
         mimetype="text/csv",
@@ -261,9 +224,3 @@ def export_attendees_csv(event_id):
             "Content-Disposition": f"attachment; filename=event_{event_id}_attendees.csv"
         },
     )
-
-
-# Serve uploaded images
-@bp.route("/uploads/banners/<filename>")
-def uploaded_file(filename):
-    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
