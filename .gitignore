@@ -25,6 +25,9 @@ build/
 *.sqlite
 *.sqlite3
 
+# Testing
+cookies.txt
+
 # IDE
 .vscode/
 .idea/
