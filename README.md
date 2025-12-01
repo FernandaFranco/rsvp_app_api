@@ -369,7 +369,7 @@ def send_rsvp_notification(event, attendee):
 
 Este projeto foi desenvolvido para fins educacionais.
 
-## 👤 Autor
+## 👤 Autora
 
 Fernanda Franco
 PUC-Rio - Pós-Graduação em Engenharia de Software
