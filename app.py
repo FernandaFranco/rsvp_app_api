@@ -1,5 +1,5 @@
 # backend/app.py
-from flask import Flask, request, session, Response
+from flask import Flask, request, session, Response, redirect
 from flask_cors import CORS
 from flask_restx import Api, Resource, fields
 from extensions import db, bcrypt, limiter
@@ -36,6 +36,7 @@ api = Api(
     title="Invitations API",
     description="API for creating and managing event invitations with RSVP functionality",
     doc="/api/docs",
+    catch_all_404s=False,
 )
 
 # Namespaces
@@ -701,6 +702,16 @@ from routes import auth, events, attendees
 app.register_blueprint(auth.bp)
 app.register_blueprint(events.bp)
 app.register_blueprint(attendees.bp)
+
+
+# Root redirect - override Flask-RESTX root route
+def redirect_root():
+    return redirect("/api/docs")
+
+
+# Override the Flask-RESTX root endpoint
+app.view_functions['root'] = redirect_root
+
 
 if __name__ == "__main__":
     with app.app_context():
