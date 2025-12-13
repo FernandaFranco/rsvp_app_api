@@ -165,7 +165,6 @@ def get_event_attendees(event_id):
                         "id": attendee.id,
                         "name": attendee.name,
                         "whatsapp_number": attendee.whatsapp_number,
-                        "family_member_names": attendee.family_member_names,
                         "num_adults": attendee.num_adults,
                         "num_children": attendee.num_children,
                         "comments": attendee.comments,
@@ -196,7 +195,6 @@ def export_attendees_csv(event_id):
             "WhatsApp",
             "Adults",
             "Children",
-            "Family Members",
             "Comments",
             "Status",
             "RSVP Date",
@@ -210,11 +208,6 @@ def export_attendees_csv(event_id):
                 attendee.whatsapp_number,
                 attendee.num_adults,
                 attendee.num_children,
-                (
-                    ", ".join(attendee.family_member_names)
-                    if attendee.family_member_names
-                    else ""
-                ),
                 attendee.comments,
                 attendee.status,
                 attendee.rsvp_date.strftime("%Y-%m-%d %H:%M"),

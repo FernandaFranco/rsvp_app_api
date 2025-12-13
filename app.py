@@ -149,9 +149,6 @@ rsvp_model = api.model(
         "name": fields.String(
             required=True, description="Attendee name", example="Maria Silva"
         ),
-        "family_member_names": fields.List(
-            fields.String, description="Family member names", example=["Pedro", "Ana"]
-        ),
         "num_adults": fields.Integer(
             required=True, description="Number of adults", example=2
         ),
@@ -172,11 +169,6 @@ rsvp_update_model = api.model(
             example="5521988888888",
         ),
         "name": fields.String(description="Updated name", example="Maria Silva"),
-        "family_member_names": fields.List(
-            fields.String,
-            description="Updated family members",
-            example=["Pedro", "Ana"],
-        ),
         "num_adults": fields.Integer(description="Updated number of adults", example=3),
         "num_children": fields.Integer(
             description="Updated number of children", example=2
@@ -506,7 +498,6 @@ class EventAttendees(Resource):
                     "id": attendee.id,
                     "name": attendee.name,
                     "whatsapp_number": attendee.whatsapp_number,
-                    "family_member_names": attendee.family_member_names,
                     "num_adults": attendee.num_adults,
                     "num_children": attendee.num_children,
                     "comments": attendee.comments,
@@ -595,7 +586,6 @@ class ExportAttendees(Resource):
                 "WhatsApp",
                 "Adults",
                 "Children",
-                "Family Members",
                 "Comments",
                 "Status",
                 "RSVP Date",
@@ -609,11 +599,6 @@ class ExportAttendees(Resource):
                     attendee.whatsapp_number,
                     attendee.num_adults,
                     attendee.num_children,
-                    (
-                        ", ".join(attendee.family_member_names)
-                        if attendee.family_member_names
-                        else ""
-                    ),
                     attendee.comments,
                     attendee.status,
                     attendee.rsvp_date.strftime("%Y-%m-%d %H:%M"),
@@ -693,7 +678,6 @@ class RSVPResource(Resource):
             event_id=event.id,
             whatsapp_number=data["whatsapp_number"],
             name=data["name"],
-            family_member_names=data.get("family_member_names", []),
             num_adults=data["num_adults"],
             num_children=data.get("num_children", 0),
             comments=data.get("comments", ""),

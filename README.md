@@ -273,7 +273,7 @@ O sistema usa SQLite para desenvolvimento. As tabelas são criadas automaticamen
 
 **attendees** (Convidados)
 
-- id, event_id, whatsapp_number, name, family_member_names (JSON)
+- id, event_id, whatsapp_number, name
 - num_adults, num_children, comments, status, rsvp_date, last_modified
 
 ## 🔒 Segurança

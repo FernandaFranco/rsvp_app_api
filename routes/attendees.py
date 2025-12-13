@@ -34,7 +34,6 @@ def create_rsvp():
         event_id=event.id,
         whatsapp_number=data["whatsapp_number"],
         name=data["name"],
-        family_member_names=data.get("family_member_names", []),
         num_adults=data["num_adults"],
         num_children=data.get("num_children", 0),
         comments=data.get("comments", ""),
