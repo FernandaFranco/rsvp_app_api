@@ -186,6 +186,30 @@ attendee_update_model = api.model(
     },
 )
 
+attendee_find_model = api.model(
+    "AttendeeFind",
+    {
+        "event_slug": fields.String(
+            required=True, description="Event slug", example="festa-aniversario-abc123"
+        ),
+        "whatsapp_number": fields.String(
+            required=True, description="WhatsApp number", example="5521999999999"
+        ),
+    },
+)
+
+attendee_modify_model = api.model(
+    "AttendeeModify",
+    {
+        "event_slug": fields.String(required=True, description="Event slug"),
+        "whatsapp_number": fields.String(required=True, description="WhatsApp number"),
+        "name": fields.String(description="New name"),
+        "num_adults": fields.Integer(description="New number of adults"),
+        "num_children": fields.Integer(description="New number of children"),
+        "comments": fields.String(description="New comments"),
+    },
+)
+
 
 # ============= AUTH ROUTES =============
 @auth_ns.route("/signup")
@@ -625,37 +649,89 @@ class RSVPResource(Resource):
         return {"message": "RSVP successful", "attendee_id": attendee.id}, 201
 
 
-@attendees_ns.route("/rsvp/<string:event_slug>")
-class RSVPModify(Resource):
-    @attendees_ns.expect(rsvp_update_model)
-    @attendees_ns.response(200, "RSVP updated")
-    @attendees_ns.response(400, "Invalid input")
-    @attendees_ns.response(403, "Modifications not allowed")
-    @attendees_ns.response(404, "RSVP not found")
-    def put(self, event_slug):
-        """Modify existing RSVP"""
+@attendees_ns.route("/find")
+class FindAttendee(Resource):
+    @attendees_ns.expect(attendee_find_model)
+    @attendees_ns.response(200, "Attendee found")
+    @attendees_ns.response(404, "Attendee not found")
+    def post(self):
+        """Find attendee by WhatsApp and event slug"""
         data = request.get_json()
 
-        if not data.get("whatsapp_number"):
-            api.abort(400, "WhatsApp number required")
+        event_slug = data.get("event_slug")
+        whatsapp_number = data.get("whatsapp_number")
 
+        if not event_slug or not whatsapp_number:
+            api.abort(400, "Event slug and WhatsApp number are required")
+
+        # Find event
         event = Event.query.filter_by(slug=event_slug).first()
         if not event:
             api.abort(404, "Event not found")
 
-        if not event.allow_modifications:
-            api.abort(403, "Modifications not allowed for this event")
-
+        # Find attendee
         attendee = Attendee.query.filter_by(
-            event_id=event.id, whatsapp_number=data["whatsapp_number"]
+            event_id=event.id, whatsapp_number=whatsapp_number
         ).first()
+
+        if not attendee:
+            api.abort(404, "RSVP not found for this WhatsApp number")
+
+        return {
+            "attendee": {
+                "id": attendee.id,
+                "name": attendee.name,
+                "whatsapp_number": attendee.whatsapp_number,
+                "num_adults": attendee.num_adults,
+                "num_children": attendee.num_children,
+                "comments": attendee.comments,
+                "status": attendee.status,
+            },
+            "event": {
+                "title": event.title,
+                "event_date": event.event_date.isoformat(),
+                "allow_modifications": event.allow_modifications,
+                "allow_cancellations": event.allow_cancellations,
+            },
+        }, 200
+
+
+@attendees_ns.route("/modify")
+class ModifyRSVP(Resource):
+    @attendees_ns.expect(attendee_modify_model)
+    @attendees_ns.response(200, "RSVP modified")
+    @attendees_ns.response(403, "Modifications not allowed")
+    @attendees_ns.response(404, "RSVP not found")
+    def put(self):
+        """Modify existing RSVP"""
+        data = request.get_json()
+
+        event_slug = data.get("event_slug")
+        whatsapp_number = data.get("whatsapp_number")
+
+        if not event_slug or not whatsapp_number:
+            api.abort(400, "Event slug and WhatsApp number are required")
+
+        # Find event
+        event = Event.query.filter_by(slug=event_slug).first()
+        if not event:
+            api.abort(404, "Event not found")
+
+        # Check if modifications are allowed
+        if not event.allow_modifications:
+            api.abort(403, "Modifications are not allowed for this event")
+
+        # Find attendee
+        attendee = Attendee.query.filter_by(
+            event_id=event.id, whatsapp_number=whatsapp_number
+        ).first()
+
         if not attendee:
             api.abort(404, "RSVP not found")
 
+        # Update fields
         if "name" in data:
             attendee.name = data["name"]
-        if "family_member_names" in data:
-            attendee.family_member_names = data["family_member_names"]
         if "num_adults" in data:
             attendee.num_adults = data["num_adults"]
         if "num_children" in data:
@@ -663,42 +739,62 @@ class RSVPModify(Resource):
         if "comments" in data:
             attendee.comments = data["comments"]
 
+        # If was cancelled, reactivate
+        if attendee.status == "cancelled":
+            attendee.status = "confirmed"
+
         db.session.commit()
         send_modification_notification(event, attendee, data)
 
-        return {"message": "RSVP updated successfully"}, 200
+        return {
+            "message": "RSVP updated successfully",
+            "attendee": {
+                "id": attendee.id,
+                "name": attendee.name,
+                "num_adults": attendee.num_adults,
+                "num_children": attendee.num_children,
+                "comments": attendee.comments,
+                "status": attendee.status,
+            },
+        }, 200
 
 
-@attendees_ns.route("/rsvp/<string:event_slug>/cancel")
-class RSVPCancel(Resource):
-    @attendees_ns.expect(rsvp_cancel_model)
+@attendees_ns.route("/cancel")
+class CancelRSVP(Resource):
+    @attendees_ns.expect(attendee_find_model)
     @attendees_ns.response(200, "RSVP cancelled")
-    @attendees_ns.response(400, "Invalid input")
     @attendees_ns.response(403, "Cancellations not allowed")
     @attendees_ns.response(404, "RSVP not found")
-    def post(self, event_slug):
+    def post(self):
         """Cancel existing RSVP"""
         data = request.get_json()
 
-        if not data.get("whatsapp_number"):
-            api.abort(400, "WhatsApp number required")
+        event_slug = data.get("event_slug")
+        whatsapp_number = data.get("whatsapp_number")
 
+        if not event_slug or not whatsapp_number:
+            api.abort(400, "Event slug and WhatsApp number are required")
+
+        # Find event
         event = Event.query.filter_by(slug=event_slug).first()
         if not event:
             api.abort(404, "Event not found")
 
+        # Check if cancellations are allowed
         if not event.allow_cancellations:
-            api.abort(403, "Cancellations not allowed for this event")
+            api.abort(403, "Cancellations are not allowed for this event")
 
+        # Find attendee
         attendee = Attendee.query.filter_by(
-            event_id=event.id, whatsapp_number=data["whatsapp_number"]
+            event_id=event.id, whatsapp_number=whatsapp_number
         ).first()
+
         if not attendee:
             api.abort(404, "RSVP not found")
 
+        # Cancel RSVP
         attendee.status = "cancelled"
         db.session.commit()
-
         send_cancellation_notification(event, attendee, data.get("reason", ""))
 
         return {"message": "RSVP cancelled successfully"}, 200

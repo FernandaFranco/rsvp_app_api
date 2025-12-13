@@ -192,8 +192,9 @@ Aqui você pode:
 #### Convidados (RSVP)
 
 - `POST /api/attendees/rsvp` - Confirmar presença em evento
-- `PUT /api/attendees/rsvp/{event_slug}` - Modificar confirmação
-- `POST /api/attendees/rsvp/{event_slug}/cancel` - Cancelar confirmação
+- `POST /api/attendees/find` - Buscar confirmação por WhatsApp
+- `PUT /api/attendees/modify` - Modificar confirmação
+- `POST /api/attendees/cancel` - Cancelar confirmação
 
 ## 🧪 Testando a API
 
