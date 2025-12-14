@@ -656,7 +656,7 @@ class RSVPResource(Resource):
     @attendees_ns.response(201, "RSVP successful")
     @attendees_ns.response(400, "Invalid input or already RSVP'd")
     @attendees_ns.response(404, "Event not found")
-    @limiter.limit("5 per minute")
+    @limiter.limit("30 per minute")
     def post(self):
         """Create RSVP for an event"""
         data = request.get_json()
