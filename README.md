@@ -62,20 +62,107 @@ backend/
 
 ## 🚀 Configuração e Instalação
 
-### Pré-requisitos
+### Opção 1: Usando Docker (Recomendado)
+
+A forma mais fácil de rodar o projeto completo (frontend + backend) é usando Docker.
+
+#### Pré-requisitos
+- Docker Desktop instalado e rodando
+- Arquivo `.env` configurado (veja instruções abaixo)
+
+#### Configurar Variáveis de Ambiente
+
+1. Copie o arquivo de exemplo:
+
+```bash
+cp .env.example .env
+```
+
+2. Edite o arquivo `.env` com suas configurações:
+
+```bash
+FLASK_APP=app.py
+FLASK_ENV=development
+SECRET_KEY=sua-chave-secreta-aqui
+DATABASE_URL=sqlite:///invitations.db
+SENDGRID_API_KEY=sua-chave-sendgrid-aqui
+SENDER_EMAIL=seu-email@gmail.com
+GOOGLE_GEOCODING_API_KEY=sua-chave-google-aqui
+FRONTEND_URL=http://localhost:3000
+```
+
+**Como gerar SECRET_KEY:**
+```bash
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+**Como obter SENDGRID_API_KEY:** Veja seção "Como obter SENDGRID_API_KEY" abaixo.
+
+**Como obter GOOGLE_GEOCODING_API_KEY:**
+1. Acesse [Google Cloud Console](https://console.cloud.google.com)
+2. Crie um projeto ou selecione um existente
+3. Ative a API "Geocoding API"
+4. Vá em "Credenciais" → "Criar credenciais" → "Chave de API"
+5. Copie a chave gerada
+
+#### Rodar com Docker
+
+**IMPORTANTE:** O docker-compose.yml está localizado na pasta `frontend/`. Para rodar o projeto completo:
+
+1. Certifique-se de que os repositórios estão no mesmo diretório pai:
+   ```
+   projeto/
+   ├── backend/    (este repositório)
+   └── frontend/   (repositório do frontend)
+   ```
+
+2. Configure o `.env.local` do frontend (veja README do frontend)
+
+3. Navegue até a pasta do frontend e rode:
+   ```bash
+   cd ../frontend
+   docker-compose up --build
+   ```
+
+4. Acesse:
+   - **Frontend:** http://localhost:3000
+   - **Backend API:** http://localhost:5000
+   - **Documentação Swagger:** http://localhost:5000/api/docs
+
+**Comandos úteis:**
+```bash
+# Ver logs em tempo real
+docker-compose logs -f
+
+# Ver logs apenas do backend
+docker-compose logs -f backend
+
+# Parar containers
+docker-compose down
+
+# Reiniciar backend
+docker restart venha_backend
+
+# Acessar terminal do container
+docker exec -it venha_backend bash
+```
+
+### Opção 2: Desenvolvimento Local (sem Docker)
+
+#### Pré-requisitos
 
 - Python 3.8 ou superior
 - pip (gerenciador de pacotes Python)
 - Conta SendGrid (gratuita) para envio de emails
 
-### Passo 1: Clonar o Repositório
+#### Passo 1: Clonar o Repositório
 
 ```bash
 git clone https://github.com/FernandaFranco/rsvp_app_api.git
 cd backend
 ```
 
-### Passo 2: Criar Ambiente Virtual
+#### Passo 2: Criar Ambiente Virtual
 
 **No Mac/Linux:**
 
@@ -344,10 +431,33 @@ Certifique-se de usar um CEP válido brasileiro no formato `12345-678` ou `12345
 
 Este projeto foi desenvolvido como parte da Sprint de Arquitetura de Software da Pós-Graduação em Engenharia de Software da PUC-Rio.
 
-### Para rodar o projeto:
+### Para rodar o projeto completo (Recomendado - Docker):
+
+1. Clone ambos os repositórios (backend e frontend) no mesmo diretório pai:
+   ```
+   projeto/
+   ├── backend/
+   └── frontend/
+   ```
+
+2. Configure os arquivos `.env`:
+   - `backend/.env` (copie de `.env.example` e configure as chaves)
+   - `frontend/.env.local` (veja README do frontend)
+
+3. A partir da pasta `frontend/`, rode:
+   ```bash
+   docker-compose up --build
+   ```
+
+4. Acesse:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:5000
+   - Documentação Swagger: http://localhost:5000/api/docs
+
+### Para rodar apenas o backend (Local):
 
 1. Clone o repositório
-2. Siga os passos de instalação acima
+2. Siga os passos de instalação da "Opção 2: Desenvolvimento Local"
 3. Configure SendGrid (ou modifique `services/email_service.py` para imprimir no console)
 4. Execute `python app.py`
 5. Acesse a documentação em `http://localhost:5000/api/docs`
