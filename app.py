@@ -919,7 +919,7 @@ class ModifyRSVP(Resource):
             attendee.status = "confirmed"
 
         db.session.commit()
-        send_modification_notification(event, attendee, data)
+        send_modification_notification(event, attendee)
 
         return {
             "message": "RSVP updated successfully",

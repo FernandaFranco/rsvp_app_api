@@ -39,7 +39,7 @@ def send_rsvp_notification(event, attendee):
         return False
 
 
-def send_modification_notification(event, attendee, changes):
+def send_modification_notification(event, attendee):
     """Send email to host when someone modifies their RSVP"""
 
     sender_email = os.getenv("SENDER_EMAIL")
