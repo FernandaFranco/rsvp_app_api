@@ -239,16 +239,16 @@ class Signup(Resource):
         data = request.get_json()
         required = ["email", "password", "name", "whatsapp_number"]
         if not all(field in data for field in required):
-            api.abort(400, "Missing required fields")
+            api.abort(400, "Preencha todos os campos obrigatórios: email, senha, nome e WhatsApp")
 
         try:
             email_info = validate_email(data["email"], check_deliverability=False)
             email = email_info.normalized
-        except EmailNotValidError as e:
-            api.abort(400, f"Invalid email: {str(e)}")
+        except EmailNotValidError:
+            api.abort(400, "Email inválido. Verifique o formato (exemplo@dominio.com)")
 
         if Host.query.filter_by(email=email).first():
-            api.abort(409, "Email already registered")
+            api.abort(409, "Este email já está cadastrado. Faça login ou use outro email")
 
         password_hash = bcrypt.generate_password_hash(data["password"]).decode("utf-8")
         host = Host(
@@ -282,13 +282,13 @@ class Login(Resource):
         """Login as host"""
         data = request.get_json()
         if not data.get("email") or not data.get("password"):
-            api.abort(400, "Email and password required")
+            api.abort(400, "Email e senha são obrigatórios")
 
         host = Host.query.filter_by(email=data["email"]).first()
         if not host or not bcrypt.check_password_hash(
             host.password_hash, data["password"]
         ):
-            api.abort(401, "Invalid credentials")
+            api.abort(401, "Email ou senha incorretos")
 
         session["host_id"] = host.id
         return {
@@ -318,11 +318,11 @@ class CurrentHost(Resource):
     def get(self):
         """Get currently authenticated host"""
         if "host_id" not in session:
-            api.abort(401, "Not authenticated")
+            api.abort(401, "Você precisa fazer login para acessar esta página")
 
         host = Host.query.get(session["host_id"])
         if not host:
-            api.abort(404, "Host not found")
+            api.abort(404, "Usuário não encontrado. Faça login novamente")
 
         return {
             "host": {
@@ -345,7 +345,7 @@ class CreateEvent(Resource):
         """Create new event (requires authentication)"""
         if "host_id" not in session:
             api.abort(
-                401, "Authentication required. Please login first at /api/auth/login"
+                401, "Faça login para criar eventos"
             )
 
         data = request.get_json()
@@ -355,7 +355,7 @@ class CreateEvent(Resource):
         if not all(field in data for field in required):
             api.abort(
                 400,
-                "Missing required fields: title, event_date, start_time, address_full",
+                "Preencha todos os campos obrigatórios: título, data, horário e endereço",
             )
 
         # Parse dates/times
@@ -367,8 +367,8 @@ class CreateEvent(Resource):
                 if data.get("end_time")
                 else None
             )
-        except ValueError as e:
-            api.abort(400, f"Invalid date/time format: {str(e)}")
+        except ValueError:
+            api.abort(400, "Formato de data/hora inválido. Use AAAA-MM-DD para data e HH:MM para horário")
 
         # Tentar geocodificar o endereço automaticamente
         latitude, longitude = geocode_address(data["address_full"])
@@ -410,7 +410,7 @@ class MyEvents(Resource):
     def get(self):
         """Get all events for the logged-in host"""
         if "host_id" not in session:
-            api.abort(401, "Authentication required")
+            api.abort(401, "Faça login para ver seus eventos")
 
         events = (
             Event.query.filter_by(host_id=session["host_id"])
@@ -461,7 +461,7 @@ class EventBySlug(Resource):
         """Get event details by slug (for guests viewing invitation)"""
         event = Event.query.filter_by(slug=slug).first()
         if not event:
-            api.abort(404, "Event not found")
+            api.abort(404, "Convite não encontrado. Verifique o link")
 
         return {
             "event": {
@@ -492,14 +492,14 @@ class EventAttendees(Resource):
     def get(self, event_id):
         """Get all attendees for an event (host only)"""
         if "host_id" not in session:
-            api.abort(401, "Authentication required")
+            api.abort(401, "Faça login para ver os convidados")
 
         event = Event.query.get(event_id)
         if not event:
-            api.abort(404, "Event not found")
+            api.abort(404, "Evento não encontrado")
 
         if event.host_id != session["host_id"]:
-            api.abort(403, "Unauthorized")
+            api.abort(403, "Você não tem permissão para acessar este evento")
 
         attendees = Attendee.query.filter_by(event_id=event_id).all()
 
@@ -530,15 +530,15 @@ class ManageAttendee(Resource):
     def put(self, event_id, attendee_id):
         """Update attendee (host only)"""
         if "host_id" not in session:
-            api.abort(401, "Authentication required")
+            api.abort(401, "Faça login para editar convidados")
 
         event = Event.query.get(event_id)
         if not event or event.host_id != session["host_id"]:
-            api.abort(403, "Unauthorized")
+            api.abort(403, "Você não tem permissão para editar este convidado")
 
         attendee = Attendee.query.get(attendee_id)
         if not attendee or attendee.event_id != event_id:
-            api.abort(404, "Attendee not found")
+            api.abort(404, "Convidado não encontrado")
 
         data = request.get_json()
         if "name" in data:
@@ -560,15 +560,15 @@ class ManageAttendee(Resource):
     def delete(self, event_id, attendee_id):
         """Delete attendee (host only)"""
         if "host_id" not in session:
-            api.abort(401, "Authentication required")
+            api.abort(401, "Faça login para deletar convidados")
 
         event = Event.query.get(event_id)
         if not event or event.host_id != session["host_id"]:
-            api.abort(403, "Unauthorized")
+            api.abort(403, "Você não tem permissão para deletar este convidado")
 
         attendee = Attendee.query.get(attendee_id)
         if not attendee or attendee.event_id != event_id:
-            api.abort(404, "Attendee not found")
+            api.abort(404, "Convidado não encontrado")
 
         db.session.delete(attendee)
         db.session.commit()
@@ -583,11 +583,11 @@ class ExportAttendees(Resource):
     def get(self, event_id):
         """Export attendees as CSV (host only)"""
         if "host_id" not in session:
-            api.abort(401, "Authentication required")
+            api.abort(401, "Faça login para exportar a lista de convidados")
 
         event = Event.query.get(event_id)
         if not event or event.host_id != session["host_id"]:
-            api.abort(403, "Unauthorized")
+            api.abort(403, "Você não tem permissão para exportar convidados deste evento")
 
         output = io.StringIO()
         writer = csv.writer(output)
@@ -636,15 +636,15 @@ class EventManagement(Resource):
     def put(self, event_id):
         """Update event (host only)"""
         if "host_id" not in session:
-            api.abort(401, "Authentication required")
+            api.abort(401, "Faça login para editar eventos")
 
         event = Event.query.get(event_id)
 
         if not event:
-            api.abort(404, "Event not found")
+            api.abort(404, "Evento não encontrado")
 
         if event.host_id != session["host_id"]:
-            api.abort(403, "Unauthorized")
+            api.abort(403, "Você não tem permissão para editar este evento")
 
         data = request.get_json()
 
@@ -694,9 +694,9 @@ class EventManagement(Resource):
                 "event": {"id": event.id, "slug": event.slug, "title": event.title},
             }, 200
 
-        except (ValueError, SQLAlchemyError) as e:
+        except (ValueError, SQLAlchemyError):
             db.session.rollback()
-            api.abort(500, f"Error updating event: {str(e)}")
+            api.abort(500, "Erro ao atualizar evento. Verifique os dados e tente novamente")
 
     @events_ns.response(200, "Event deleted")
     @events_ns.response(401, "Not authenticated")
@@ -705,15 +705,15 @@ class EventManagement(Resource):
     def delete(self, event_id):
         """Delete event (host only)"""
         if "host_id" not in session:
-            api.abort(401, "Authentication required")
+            api.abort(401, "Faça login para deletar eventos")
 
         event = Event.query.get(event_id)
 
         if not event:
-            api.abort(404, "Event not found")
+            api.abort(404, "Evento não encontrado")
 
         if event.host_id != session["host_id"]:
-            api.abort(403, "Unauthorized")
+            api.abort(403, "Você não tem permissão para deletar este evento")
 
         try:
             # Delete all attendees first (cascade should handle this, but being explicit)
@@ -725,9 +725,9 @@ class EventManagement(Resource):
 
             return {"message": "Event deleted successfully"}, 200
 
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             db.session.rollback()
-            api.abort(500, f"Error deleting event: {str(e)}")
+            api.abort(500, "Erro ao deletar evento. Tente novamente")
 
 
 @events_ns.route("/<int:event_id>/duplicate")
@@ -739,15 +739,15 @@ class DuplicateEvent(Resource):
     def post(self, event_id):
         """Duplicate an existing event"""
         if "host_id" not in session:
-            api.abort(401, "Authentication required")
+            api.abort(401, "Faça login para duplicar eventos")
 
         original_event = Event.query.get(event_id)
 
         if not original_event:
-            api.abort(404, "Event not found")
+            api.abort(404, "Evento não encontrado")
 
         if original_event.host_id != session["host_id"]:
-            api.abort(403, "Unauthorized")
+            api.abort(403, "Você não tem permissão para duplicar este evento")
 
         try:
             # Create new event with same data
@@ -778,9 +778,9 @@ class DuplicateEvent(Resource):
                 },
             }, 201
 
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             db.session.rollback()
-            api.abort(500, f"Error duplicating event: {str(e)}")
+            api.abort(500, "Erro ao duplicar evento. Tente novamente")
 
 
 # ============= ATTENDEE ROUTES =============
@@ -796,17 +796,17 @@ class RSVPResource(Resource):
         data = request.get_json()
         required = ["event_slug", "whatsapp_number", "name", "num_adults"]
         if not all(field in data for field in required):
-            api.abort(400, "Missing required fields")
+            api.abort(400, "Preencha todos os campos obrigatórios: nome, WhatsApp e número de adultos")
 
         event = Event.query.filter_by(slug=data["event_slug"]).first()
         if not event:
-            api.abort(404, "Event not found")
+            api.abort(404, "Evento não encontrado. Verifique o link do convite")
 
         existing = Attendee.query.filter_by(
             event_id=event.id, whatsapp_number=data["whatsapp_number"]
         ).first()
         if existing:
-            api.abort(400, "You have already RSVP'd to this event")
+            api.abort(400, "Você já confirmou presença neste evento")
 
         attendee = Attendee(
             event_id=event.id,
@@ -837,12 +837,12 @@ class FindAttendee(Resource):
         whatsapp_number = data.get("whatsapp_number")
 
         if not event_slug or not whatsapp_number:
-            api.abort(400, "Event slug and WhatsApp number are required")
+            api.abort(400, "Link do evento e número de WhatsApp são obrigatórios")
 
         # Find event
         event = Event.query.filter_by(slug=event_slug).first()
         if not event:
-            api.abort(404, "Event not found")
+            api.abort(404, "Evento não encontrado. Verifique o link")
 
         # Find attendee
         attendee = Attendee.query.filter_by(
@@ -850,7 +850,7 @@ class FindAttendee(Resource):
         ).first()
 
         if not attendee:
-            api.abort(404, "RSVP not found for this WhatsApp number")
+            api.abort(404, "Nenhuma confirmação encontrada para este WhatsApp. Verifique o número digitado")
 
         return {
             "attendee": {
@@ -885,16 +885,16 @@ class ModifyRSVP(Resource):
         whatsapp_number = data.get("whatsapp_number")
 
         if not event_slug or not whatsapp_number:
-            api.abort(400, "Event slug and WhatsApp number are required")
+            api.abort(400, "Link do evento e número de WhatsApp são obrigatórios")
 
         # Find event
         event = Event.query.filter_by(slug=event_slug).first()
         if not event:
-            api.abort(404, "Event not found")
+            api.abort(404, "Evento não encontrado")
 
         # Check if modifications are allowed
         if not event.allow_modifications:
-            api.abort(403, "Modifications are not allowed for this event")
+            api.abort(403, "O anfitrião não permitiu modificações para este evento")
 
         # Find attendee
         attendee = Attendee.query.filter_by(
@@ -902,7 +902,7 @@ class ModifyRSVP(Resource):
         ).first()
 
         if not attendee:
-            api.abort(404, "RSVP not found")
+            api.abort(404, "Confirmação não encontrada. Verifique o número de WhatsApp")
 
         # Update fields
         if "name" in data:
@@ -948,16 +948,16 @@ class CancelRSVP(Resource):
         whatsapp_number = data.get("whatsapp_number")
 
         if not event_slug or not whatsapp_number:
-            api.abort(400, "Event slug and WhatsApp number are required")
+            api.abort(400, "Link do evento e número de WhatsApp são obrigatórios")
 
         # Find event
         event = Event.query.filter_by(slug=event_slug).first()
         if not event:
-            api.abort(404, "Event not found")
+            api.abort(404, "Evento não encontrado")
 
         # Check if cancellations are allowed
         if not event.allow_cancellations:
-            api.abort(403, "Cancellations are not allowed for this event")
+            api.abort(403, "O anfitrião não permitiu cancelamentos para este evento")
 
         # Find attendee
         attendee = Attendee.query.filter_by(
@@ -965,7 +965,7 @@ class CancelRSVP(Resource):
         ).first()
 
         if not attendee:
-            api.abort(404, "RSVP not found")
+            api.abort(404, "Confirmação não encontrada. Verifique o número de WhatsApp")
 
         # Cancel RSVP
         attendee.status = "cancelled"
