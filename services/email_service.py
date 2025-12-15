@@ -7,7 +7,7 @@ from sendgrid.helpers.mail import Mail
 def send_rsvp_notification(event, attendee):
     """Send email to host when someone RSVPs"""
 
-    sender_email = "ferfrancodias@gmail.com"
+    sender_email = os.getenv("SENDER_EMAIL")
 
     message = Mail(
         from_email=sender_email,
@@ -42,7 +42,7 @@ def send_rsvp_notification(event, attendee):
 def send_modification_notification(event, attendee, changes):
     """Send email to host when someone modifies their RSVP"""
 
-    sender_email = "ferfrancodias@gmail.com"
+    sender_email = os.getenv("SENDER_EMAIL")
 
     message = Mail(
         from_email=sender_email,
@@ -74,7 +74,7 @@ def send_modification_notification(event, attendee, changes):
 def send_cancellation_notification(event, attendee, reason=""):
     """Send email to host when someone cancels"""
 
-    sender_email = "ferfrancodias@gmail.com"
+    sender_email = os.getenv("SENDER_EMAIL")
 
     message = Mail(
         from_email=sender_email,
