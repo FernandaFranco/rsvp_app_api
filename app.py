@@ -424,8 +424,18 @@ class MyEvents(Resource):
                     "id": event.id,
                     "slug": event.slug,
                     "title": event.title,
+                    "description": event.description,
                     "event_date": event.event_date.isoformat(),
                     "start_time": event.start_time.strftime("%H:%M"),
+                    "end_time": (
+                        event.end_time.strftime("%H:%M") if event.end_time else None
+                    ),
+                    "address_cep": event.address_cep,
+                    "address_full": event.address_full,
+                    "latitude": event.latitude,
+                    "longitude": event.longitude,
+                    "allow_modifications": bool(event.allow_modifications),
+                    "allow_cancellations": bool(event.allow_cancellations),
                     "attendee_count": len(
                         [a for a in event.attendees if a.status == "confirmed"]
                     ),
@@ -467,8 +477,8 @@ class EventBySlug(Resource):
                 "address_full": event.address_full,
                 "latitude": event.latitude,
                 "longitude": event.longitude,
-                "allow_modifications": event.allow_modifications,
-                "allow_cancellations": event.allow_cancellations,
+                "allow_modifications": bool(event.allow_modifications),
+                "allow_cancellations": bool(event.allow_cancellations),
             }
         }, 200
 
@@ -855,8 +865,8 @@ class FindAttendee(Resource):
             "event": {
                 "title": event.title,
                 "event_date": event.event_date.isoformat(),
-                "allow_modifications": event.allow_modifications,
-                "allow_cancellations": event.allow_cancellations,
+                "allow_modifications": bool(event.allow_modifications),
+                "allow_cancellations": bool(event.allow_cancellations),
             },
         }, 200
 
