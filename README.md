@@ -32,7 +32,7 @@ Este sistema permite que anfitriões criem eventos, gerem links de convite únic
 
 O sistema Venha utiliza uma arquitetura de três camadas (Frontend, Backend API, Banco de Dados) com integração a múltiplas APIs externas.
 
-**Diagrama de Arquitetura Completo:** Consulte o arquivo [`../ARCHITECTURE.md`](../ARCHITECTURE.md) para visualizar o diagrama detalhado da arquitetura, fluxo de dados, decisões de design e integrações com serviços externos.
+**Diagrama de Arquitetura Completo:** Consulte o arquivo [`ARCHITECTURE.md`](ARCHITECTURE.md) para visualizar o diagrama detalhado da arquitetura, fluxo de dados, decisões de design e integrações com serviços externos.
 
 **Visão Resumida:**
 - **Frontend (Next.js):** Interface web responsiva com SSR, páginas públicas (convites) e privadas (dashboard)
