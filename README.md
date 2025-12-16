@@ -28,6 +28,25 @@ Este sistema permite que anfitriões criem eventos, gerem links de convite únic
 - Modificação de confirmação de presença
 - Cancelamento de presença com motivo opcional
 
+## 🏗️ Arquitetura da Aplicação
+
+O sistema Venha utiliza uma arquitetura de três camadas (Frontend, Backend API, Banco de Dados) com integração a múltiplas APIs externas.
+
+**Diagrama de Arquitetura Completo:** Consulte o arquivo [`../ARCHITECTURE.md`](../ARCHITECTURE.md) para visualizar o diagrama detalhado da arquitetura, fluxo de dados, decisões de design e integrações com serviços externos.
+
+**Visão Resumida:**
+- **Frontend (Next.js):** Interface web responsiva com SSR, páginas públicas (convites) e privadas (dashboard)
+- **Backend (Flask REST API):** Esta API fornece a lógica de negócio, autenticação, validações e integrações com serviços externos
+- **Banco de Dados (SQLite):** Armazenamento persistente de hosts, eventos e confirmações
+- **Serviços Externos:** SendGrid (emails), Google Geocoding (coordenadas), ViaCEP (endereços brasileiros)
+
+**Comunicação:** API REST com JSON, autenticação via session cookies, documentação Swagger/OpenAPI automática.
+
+**Endpoints Principais:**
+- `/api/auth/*` - Autenticação e gerenciamento de usuários
+- `/api/events/*` - CRUD de eventos e exportação
+- `/api/attendees/*` - Gerenciamento de RSVPs
+
 ## 🛠️ Tecnologias Utilizadas
 
 - **Python 3.x**
