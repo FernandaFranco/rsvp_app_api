@@ -205,12 +205,7 @@ attendees
 
 ## Integrações Externas
 
-### 1. SendGrid (Emails)
-- **Uso:** Notificações ao anfitrião quando há RSVP/modificação/cancelamento
-- **Modo Simulação:** Por padrão, imprime emails no console
-- **Modo Produção:** Requer SENDGRID_API_KEY
-
-### 2. Google Maps API (Visualização de Mapas)
+### 1. Google Maps API (Visualização de Mapas)
 - **Uso:** Frontend exibe mapa na página do convite
 - **Configuração:** NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 - **Comportamento Gracioso:** Se não configurado, não exibe mapa

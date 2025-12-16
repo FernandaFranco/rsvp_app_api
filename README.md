@@ -38,7 +38,9 @@ O sistema Venha utiliza uma arquitetura de três camadas (Frontend, Backend API,
 - **Frontend (Next.js):** Interface web responsiva com SSR, páginas públicas (convites) e privadas (dashboard)
 - **Backend (Flask REST API):** Esta API fornece a lógica de negócio, autenticação, validações e integrações com serviços externos
 - **Banco de Dados (SQLite):** Armazenamento persistente de hosts, eventos e confirmações
-- **Serviços Externos:** SendGrid (emails), Google Geocoding (coordenadas), ViaCEP (endereços brasileiros)
+- **Serviços Externos (Backend):** Google Geocoding com fallback Nominatim (coordenadas)
+- **Serviços Externos (Frontend):** ViaCEP (endereços brasileiros), Google Maps (visualização), WeatherAPI (previsão do tempo)
+- **Notificações:** Modo simulação - emails impressos no console (SendGrid configurável para produção)
 
 **Comunicação:** API REST com JSON, autenticação via session cookies, documentação Swagger/OpenAPI automática.
 
@@ -405,12 +407,182 @@ Os emails são enviados via SendGrid e incluem:
 - Comentários especiais
 - Link para visualizar todos os convidados
 
+## 🌐 APIs Externas
+
+O backend do sistema Venha integra-se com **1 API externa** principal (Google Geocoding) com fallback para Nominatim (OpenStreetMap). Abaixo está a documentação detalhada:
+
+> **Nota:** A API ViaCEP (busca de endereços por CEP) é chamada **diretamente pelo frontend**, não pelo backend. Consulte a documentação do frontend para detalhes.
+
+### Google Geocoding API
+
+**URL:** https://developers.google.com/maps/documentation/geocoding
+
+**Propósito:** Conversão de endereços completos em coordenadas geográficas (latitude/longitude) para exibição de mapas no frontend e localização precisa de eventos.
+
+**Licença/Custo:**
+- Plano gratuito com crédito mensal de $200 USD
+- Primeiras 40.000 requisições/mês são gratuitas
+- Após limite: $5 por 1.000 requisições adicionais
+- Licença: Proprietária (Google Cloud Platform)
+
+**Registro:**
+1. Criar conta no [Google Cloud Console](https://console.cloud.google.com)
+2. Criar ou selecionar um projeto
+3. Ativar a API "Geocoding API"
+4. Criar credenciais (Chave de API)
+5. Configurar variável `GOOGLE_GEOCODING_API_KEY` no `.env`
+6. (Recomendado) Restringir chave por IP ou serviço
+
+**Uso no Backend:**
+- Arquivo: [services/geocoding_service.py](services/geocoding_service.py)
+- Endpoints expostos:
+  - `POST /api/events/create` (geocoding automático)
+  - `POST /api/events/geocode` (validação manual)
+- Funcionalidade: Converter endereço textual em coordenadas lat/lng
+- Campos salvos no banco: `latitude`, `longitude` (tabela `events`)
+
+**Endpoint externo utilizado:**
+- `GET https://maps.googleapis.com/maps/api/geocode/json`
+  - Parâmetros: `address`, `key`
+  - Retorna: `results[0].geometry.location` (lat, lng)
+
+**Fallback - Nominatim (OpenStreetMap):**
+
+Se a chave do Google não estiver configurada ou falhar, o sistema usa Nominatim como alternativa:
+
+- **URL:** https://nominatim.openstreetmap.org/
+- **Licença:** Open Data Commons Open Database License (ODbL)
+- **Sem custo:** Completamente gratuito
+- **Limitações:** Taxa de 1 requisição por segundo
+- **Endpoint:** `GET https://nominatim.openstreetmap.org/search`
+  - Parâmetros: `q` (endereço), `format=json`, `limit=1`
+
+**Implementação:**
+```python
+def geocode_address(address):
+    # Tenta Google primeiro
+    if GOOGLE_API_KEY:
+        try:
+            # Google Geocoding
+            return (lat, lng)
+        except:
+            pass
+
+    # Fallback para Nominatim
+    try:
+        # OpenStreetMap Nominatim
+        return (lat, lng)
+    except:
+        return (None, None)
+```
+
+**Tratamento de Erro:**
+- Se ambas as APIs falharem, salva evento sem coordenadas
+- Frontend exibe evento normalmente, mas sem mapa
+- Comportamento gracioso: sistema continua funcional
+
+---
+
+## 📧 Notificações por Email - Modo Simulação
+
+**Implementação Atual:** O sistema **não envia emails reais**. Quando um convidado confirma, modifica ou cancela presença, o backend **imprime o conteúdo do email no console**.
+
+**Como funciona:**
+- Arquivo: [services/email_service.py](services/email_service.py)
+- Modo: **Sempre simulação** (logs no console)
+- Eventos que geram emails simulados:
+  - Novo RSVP confirmado
+  - Modificação de confirmação
+  - Cancelamento de presença
+
+**Exemplo de log no console:**
+```
+================================================================================
+📧 EMAIL SIMULADO - Novo RSVP para Festa de Aniversário
+================================================================================
+De: noreply@venha.app
+Para: host@example.com
+Assunto: Novo RSVP para Festa de Aniversário
+
+[Conteúdo HTML do email...]
+================================================================================
+```
+
+**Vantagens do modo simulação:**
+- Zero configuração necessária
+- Logs visíveis em `docker-compose logs -f backend`
+- Sem custos
+- Facilita debugging e testes
+
+**Melhoria Futura - SendGrid:**
+
+Para habilitar envio real de emails em produção, o código está preparado para integração com SendGrid:
+
+1. Criar conta em [SendGrid.com](https://sendgrid.com/) (100 emails/dia grátis)
+2. Configurar "Single Sender Verification"
+3. Criar API Key
+4. Adicionar ao `.env`:
+   ```bash
+   SENDGRID_API_KEY=SG.sua-chave-aqui
+   SENDER_EMAIL=seu-email-verificado@example.com
+   ```
+5. Reiniciar o backend
+
+**Documentação completa:** Veja comentários em `services/email_service.py`
+
+---
+
+## ⚙️ Resumo de Configuração
+
+**Obrigatórias:**
+- `SECRET_KEY` - Gerado localmente (Python secrets)
+- `FLASK_APP` - app.py
+- `DATABASE_URL` - sqlite:///invitations.db
+
+**Opcionais com fallback:**
+- `GOOGLE_GEOCODING_API_KEY` - Usa Nominatim (OpenStreetMap) se não configurado
+
+**Para produção (futuro):**
+- `SENDGRID_API_KEY` - Para envio real de emails
+- `SENDER_EMAIL` - Email verificado no SendGrid
+
+### Variáveis de Ambiente (arquivo .env)
+
+```bash
+# Obrigatórias
+FLASK_APP=app.py
+FLASK_ENV=development
+SECRET_KEY=seu-secret-key-aqui
+DATABASE_URL=sqlite:///invitations.db
+
+# Opcional - Google Geocoding (usa Nominatim como fallback)
+GOOGLE_GEOCODING_API_KEY=sua-chave-google-aqui
+
+# Opcional - SendGrid (para produção futura)
+# SENDGRID_API_KEY=SG.sua-chave-aqui
+# SENDER_EMAIL=seu-email-verificado@gmail.com
+
+# Frontend
+FRONTEND_URL=http://localhost:3000
+```
+
+### Comportamento Gracioso
+
+O sistema foi projetado para funcionar mesmo quando APIs externas não estão disponíveis:
+
+| API | Se não configurada | Impacto no usuário |
+|-----|-------------------|-------------------|
+| Google Geocoding | Usa Nominatim (OSM) | Nenhum (fallback automático) |
+| Nominatim | Eventos criados sem coordenadas | Mapas não aparecem no frontend |
+
+**Emails:** Sistema sempre opera em modo simulação (logs no console). SendGrid pode ser configurado para produção futura.
+
 ## ⚠️ Limitações e Observações
 
-- **CEP:** Funciona apenas com CEPs brasileiros válidos (via ViaCEP)
 - **WhatsApp:** Usado apenas como identificador único, sem integração real de API
 - **Rate Limiting:** Armazenado em memória (será perdido ao reiniciar o servidor)
 - **Banco de Dados:** SQLite não é recomendado para produção (usar PostgreSQL)
+- **Geocoding:** Se tanto Google quanto Nominatim falharem, evento é criado sem coordenadas (mapa não aparecerá no frontend)
 
 ## 🐛 Solução de Problemas
 
