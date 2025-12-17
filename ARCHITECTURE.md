@@ -210,20 +210,28 @@ attendees
 - **Configuração:** NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 - **Comportamento Gracioso:** Se não configurado, não exibe mapa
 
-### 3. Google Geocoding API (Coordenadas)
+### 2. Google Geocoding API (Coordenadas)
 - **Uso:** Backend converte endereço completo em lat/long
 - **Fallback:** Usa Nominatim (OpenStreetMap) se Google falhar
 - **Configuração:** GOOGLE_GEOCODING_API_KEY
 
-### 4. WeatherAPI (Previsão do Tempo)
+### 3. WeatherAPI (Previsão do Tempo)
 - **Uso:** Frontend exibe clima previsto na página do convite
 - **Limitação:** Apenas até 3 dias no futuro (plano gratuito)
 - **Configuração:** NEXT_PUBLIC_WEATHER_API_KEY
 
-### 5. ViaCEP (Endereços)
-- **Uso:** Backend busca endereço completo a partir do CEP
+### 4. ViaCEP (Endereços)
+- **Uso:** Frontend busca endereço completo a partir do CEP (chamada direta, não passa pelo backend)
 - **API Pública:** Sem necessidade de chave
 - **Limitação:** Apenas CEPs brasileiros
+
+### Notificações por Email
+
+**Implementação Atual: Modo Simulação**
+- Sistema **não envia emails reais**
+- Logs impressos no console quando há RSVP/modificação/cancelamento
+- Útil para desenvolvimento/demonstração sem configuração
+- **Melhoria Futura:** Código preparado para integração com SendGrid (100 emails/dia grátis)
 
 ## Decisões de Arquitetura
 
