@@ -28,17 +28,22 @@ Este sistema permite que anfitriões criem eventos, gerem links de convite únic
 
 ## 🏗️ Arquitetura da Aplicação
 
+![Diagrama de Arquitetura](docs/architecture-diagram.png)
+
+<details>
+<summary>💡 Ver código Mermaid (clique para expandir)</summary>
+
 ```mermaid
 graph LR
-    A[Frontend<br/>Next.js] <-->|REST/JSON| B[Backend<br/>Flask API]
-    B --> C[(Database<br/>SQLite)]
+    A["🐳<br/>Frontend<br/>Next.js"] <-->|REST/JSON| B["🐳<br/>Backend<br/>Flask API"]
+    B <-->|SQL| C[("Database<br/>SQLite<br/>(local)")]
 
-    A -.->|REST| D[ViaCEP]
-    A -.->|REST| E[Google Maps API]
-    A -.->|REST| F[WeatherAPI]
+    A <-.->|REST| D[ViaCEP]
+    A <-.->|REST| E[Google Maps API]
+    A <-.->|REST| F[WeatherAPI]
 
-    B -.->|REST| G[Google Geocoding API]
-    B -.->|REST<br/>fallback| H[Nominatim OSM]
+    B <-.->|REST| G[Google Geocoding API]
+    B <-.->|REST<br/>fallback| H[Nominatim OSM]
 
     style A fill:#b3e0ff,stroke:#333,stroke-width:2px,color:#000
     style B fill:#b3e0ff,stroke:#333,stroke-width:2px,color:#000
@@ -50,16 +55,19 @@ graph LR
     style H fill:#ffe6b3,stroke:#333,stroke-width:2px,color:#000
 ```
 
+</details>
+
 **Legenda:**
 - **Linha contínua (←→):** Comunicação obrigatória
-- **Linha tracejada (- -):** Comunicação opcional ou fallback
+- **Linha tracejada (←-→):** Comunicação opcional ou fallback
+- **🐳 (Docker):** Container Docker separado
 - **Azul:** Módulos implementados no projeto
-- **Amarelo:** APIs e serviços externos
+- **Amarelo:** APIs externas
 
 **Componentes:**
-- **Frontend (Next.js):** Interface web responsiva, páginas públicas e privadas, autenticação via session cookies
-- **Backend (Flask):** API REST com lógica de negócio, validações, documentação Swagger automática
-- **Database (SQLite):** Armazenamento de hosts, eventos e confirmações (RSVPs)
+- **Frontend (Next.js) 🐳:** Interface web responsiva, páginas públicas e privadas, autenticação via session cookies
+- **Backend (Flask) 🐳:** API REST com lógica de negócio, validações, documentação Swagger automática
+- **Database (SQLite):** Arquivo local montado via volume Docker para persistência de dados (hosts, eventos e RSVPs)
 - **APIs Externas Frontend:** ViaCEP (endereços), Google Maps (mapas), WeatherAPI (clima)
 - **APIs Externas Backend:** Google Geocoding (coordenadas) com fallback Nominatim
 - **Notificações:** Emails simulados no console (sem envio real)
