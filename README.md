@@ -23,7 +23,6 @@ O sistema Venha permite que anfitriões criem eventos e gerem um link de convite
 - Visualização de detalhes do evento via link
 - Confirmação de presença (RSVP)
 - Informação de número de adultos e crianças
-- Adição de membros da família
 - Comentários sobre necessidades especiais ou alergias
 - Modificação de confirmação de presença
 - Cancelamento de presença com motivo opcional
